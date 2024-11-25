@@ -5,7 +5,7 @@ require Pod::Executable.execute_command('node', ['-p',
     {paths: [process.argv[1]]},
   )', __dir__]).strip
 
-platform :ios, min_ios_version_supported
+platform :ios, '12.0' # Set minimum iOS deployment target to 12.0
 prepare_react_native_project!
 
 linkage = ENV['USE_FRAMEWORKS']
@@ -20,7 +20,9 @@ target 'BluetoothToggleApp' do
   use_react_native!(
     :path => config[:reactNativePath],
     # An absolute path to your application root.
-    :app_path => "#{Pod::Config.instance.installation_root}/.."
+    :app_path => "#{Pod::Config.instance.installation_root}/..",
+    :hermes_enabled => true, # Enable Hermes for better performance
+    :fabric_enabled => true # Use Fabric for modern rendering
   )
 
   target 'BluetoothToggleAppTests' do
@@ -29,12 +31,18 @@ target 'BluetoothToggleApp' do
   end
 
   post_install do |installer|
-    # https://github.com/facebook/react-native/blob/main/packages/react-native/scripts/react_native_pods.rb#L197-L202
     react_native_post_install(
       installer,
       config[:reactNativePath],
-      :mac_catalyst_enabled => false,
-      # :ccache_enabled => true
+      :mac_catalyst_enabled => false
     )
+    # Resolve issues with Flipper dependencies
+    installer.pods_project.targets.each do |target|
+      if target.name == 'YogaKit'
+        target.build_configurations.each do |config|
+          config.build_settings['SWIFT_VERSION'] = '5.0'
+        end
+      end
+    end
   end
 end
